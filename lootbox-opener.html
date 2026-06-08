@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault — Loot Box Opener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #f0d080;
+    --gold-dim: #7a5e1f;
+    --bg: #07060d;
+    --surface: #0f0e1a;
+    --surface2: #1a1828;
+    --surface3: #231f38;
+    --border: rgba(201,168,76,0.18);
+    --border-strong: rgba(201,168,76,0.45);
+    --text: #e8e2d5;
+    --text-muted: #7a7060;
+    --text-dim: #3d3828;
+    --common: #7a8fa0;
+    --common-glow: #7a8fa055;
+    --uncommon: #4db87a;
+    --uncommon-glow: #4db87a55;
+    --rare: #6699ff;
+    --rare-glow: #6699ff55;
+    --legendary: #f0a030;
+    --legendary-glow: #f0a03055;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Crimson Pro', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle star field background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.08) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 70%, rgba(255,255,255,0.06) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 100%),
+      radial-gradient(2px 2px at 15% 85%, rgba(201,168,76,0.06) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 15%, rgba(201,168,76,0.04) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,6,13,0.85);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Cinzel', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .logo span {
+    display: block;
+    font-size: 0.45rem;
+    letter-spacing: 0.6em;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    margin-top: -2px;
+  }
+
+  nav { display: flex; gap: 4px; }
+
+  .nav-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .nav-btn:hover { color: var(--gold); border-color: var(--border); }
+
+  .nav-btn.active {
+    color: var(--gold);
+    border-color: var(--border-strong);
+    background: rgba(201,168,76,0.06);
+  }
+
+  .gallery-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gold);
+    color: var(--bg);
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 500;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  /* ── VIEWS ── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── SHOP VIEW ── */
+  .shop-hero {
+    text-align: center;
+    padding: 3.5rem 2rem 2rem;
+  }
+
+  .shop-hero h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .shop-hero p {
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .divider {
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    margin: 1.2rem auto;
+  }
+
+  .boxes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem 2.5rem 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ── LOOT BOX CARD ── */
+  .box-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.8rem 1.5rem 1.4rem;
+    cursor: pointer;
+    transition: border-color 0.3s, transform 0.2s, background 0.3s;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .box-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--box-glow, rgba(201,168,76,0.06)) 0%, transparent 65%);
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  .box-card:hover {
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+    background: var(--surface2);
+  }
+
+  .box-card:hover::before { opacity: 1.5; }
+
+  .box-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: 0.8rem;
+    display: block;
+    filter: drop-shadow(0 0 12px var(--box-glow, rgba(201,168,76,0.3)));
+    transition: filter 0.3s, transform 0.3s;
+  }
+  
+  .box-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .box-card:hover .box-icon {
+    transform: scale(1.08) rotate(-3deg);
+    filter: drop-shadow(0 0 20px var(--box-glow, rgba(201,168,76,0.5)));
+  }
+
+  .box-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  .box-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-style: italic;
+    font-weight: 300;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+  }
+
+  .box-weight-bar {
+    width: 100%;
+    background: var(--surface3);
+    border-radius: 2px;
+    height: 4px;
+    margin-bottom: 0.6rem;
+    overflow: hidden;
+  }
+
+  .box-weight-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold));
+    transition: width 0.4s;
+  }
+
+  .box-weight-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .tier-pills {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 1.2rem;
+  }
+
+  .tier-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+
+  .tier-pill.common { color: var(--common); border-color: var(--common); background: var(--common-glow); }
+  .tier-pill.uncommon { color: var(--uncommon); border-color: var(--uncommon); background: var(--uncommon-glow); }
+  .tier-pill.rare { color: var(--rare); border-color: var(--rare); background: var(--rare-glow); }
+  .tier-pill.legendary { color: var(--legendary); border-color: var(--legendary); background: var(--legendary-glow); }
+
+  .open-btn {
+    width: 100%;
+    padding: 0.65rem 1rem;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid var(--border-strong);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .open-btn:hover {
+    background: rgba(201,168,76,0.15);
+    border-color: var(--gold);
+  }
+
+  /* ── OPENING MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7,6,13,0.95);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    flex-direction: column;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .modal-title img {
+    height: 1.2rem;
+  }
+
+  /* ── ROULETTE ── */
+  .roulette-wrapper {
+    width: min(700px, 92vw);
+    position: relative;
+    margin-bottom: 2rem;
+  }
+
+  .roulette-track-outer {
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .roulette-track-outer::before,
+  .roulette-track-outer::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 80px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .roulette-track-outer::before {
+    left: 0;
+    background: linear-gradient(90deg, var(--surface), transparent);
+  }
+
+  .roulette-track-outer::after {
+    right: 0;
+    background: linear-gradient(-90deg, var(--surface), transparent);
+  }
+
+  .roulette-pointer {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: var(--gold);
+    transform: translateX(-50%);
+    z-index: 6;
+    box-shadow: 0 0 10px var(--gold);
+  }
+
+  .roulette-pointer::before,
+  .roulette-pointer::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+  }
+
+  .roulette-pointer::before {
+    top: -1px;
+    border-top-color: var(--gold);
+    border-width: 8px 5px 0;
+  }
+
+  .roulette-pointer::after {
+    bottom: -1px;
+    border-bottom-color: var(--gold);
+    border-width: 0 5px 8px;
+  }
+
+  .roulette-track {
+    display: flex;
+    height: 110px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px;
+    will-change: transform;
+  }
+
+  .roulette-item {
+    flex: 0 0 100px;
+    height: 90px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--surface2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .roulette-item.common { border-color: var(--common-glow); background: rgba(122,143,160,0.08); }
+  .roulette-item.uncommon { border-color: var(--uncommon-glow); background: rgba(77,184,122,0.08); }
+  .roulette-item.rare { border-color: var(--rare-glow); background: rgba(102,153,255,0.08); }
+  .roulette-item.legendary { border-color: var(--legendary-glow); background: rgba(240,160,48,0.08); }
+
+  .roulette-item .item-emoji {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .roulette-item .item-emoji img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  
+  .roulette-item .item-name {
+    font-size: 0.58rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 0 4px;
+    line-height: 1.2;
+  }
+
+  /* ── REVEAL ── */
+  .reveal-container {
+    text-align: center;
+    display: none;
+    animation: fadeReveal 0.5s ease;
+  }
+
+  .reveal-container.show { display: block; }
+
+  @keyframes fadeReveal {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .reveal-item-box {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 1.5rem;
+    border: 1px solid;
+    border-radius: 4px;
+    margin-bottom: 1.2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .reveal-item-box::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, var(--reveal-glow, rgba(201,168,76,0.08)) 0%, transparent 70%);
+    pointer-events: none;
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .reveal-emoji { 
+    width: 70%;
+    height: 70%;
+  }
+  
+  .reveal-emoji img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .reveal-tier-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    border: 1px solid;
+    border-radius: 2px;
+  }
+
+  .reveal-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+
+  .reveal-desc {
+    font-style: italic;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .btn-primary, .btn-secondary {
+    padding: 0.65rem 1.8rem;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+  }
+
+  .btn-primary {
+    background: rgba(201,168,76,0.12);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .btn-primary:hover { background: rgba(201,168,76,0.22); }
+
+  .btn-secondary {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-muted);
+  }
+
+  .btn-secondary:hover { border-color: var(--border-strong); color: var(--text); }
+
+  /* ── GALLERY ── */
+  .gallery-header {
+    padding: 3rem 2.5rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .gallery-header h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  .gallery-header p {
+    color: var(--text-muted);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  .gallery-filters {
+    display: flex;
+    gap: 8px;
+    padding: 1rem 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 5px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .filter-btn:hover, .filter-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.06); }
+  .filter-btn.common.active { border-color: var(--common); color: var(--common); background: var(--common-glow); }
+  .filter-btn.uncommon.active { border-color: var(--uncommon); color: var(--uncommon); background: var(--uncommon-glow); }
+  .filter-btn.rare.active { border-color: var(--rare); color: var(--rare); background: var(--rare-glow); }
+  .filter-btn.legendary.active { border-color: var(--legendary); color: var(--legendary); background: var(--legendary-glow); }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    gap: 1rem;
+    padding: 0.5rem 2.5rem 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .gallery-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 1.1rem;
+  }
+
+  .gallery-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.2rem 1rem 0.9rem;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gallery-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--card-glow, transparent) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .gallery-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+
+  .gallery-card.common { --card-glow: rgba(122,143,160,0.06); border-color: rgba(122,143,160,0.2); }
+  .gallery-card.uncommon { --card-glow: rgba(77,184,122,0.06); border-color: rgba(77,184,122,0.2); }
+  .gallery-card.rare { --card-glow: rgba(102,153,255,0.06); border-color: rgba(102,153,255,0.2); }
+  .gallery-card.legendary { --card-glow: rgba(240,160,48,0.08); border-color: rgba(240,160,48,0.25); }
+
+  .gallery-card .g-emoji { 
+    width: 80%; 
+    height: 80%; 
+    display: block; 
+    margin: 0 auto 0.5rem; 
+  }
+  
+  .gallery-card .g-emoji img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .gallery-card .g-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    margin-bottom: 0.3rem;
+    font-weight: 600;
+  }
+
+  .gallery-card .g-tier {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .gallery-card .g-tier.common { color: var(--common); }
+  .gallery-card .g-tier.uncommon { color: var(--uncommon); }
+  .gallery-card .g-tier.rare { color: var(--rare); }
+  .gallery-card .g-tier.legendary { color: var(--legendary); }
+
+  .gallery-card .g-source {
+    font-size: 0.58rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  
+  .gallery-card .g-source img {
+    height: 10px;
+  }
+
+  .gallery-card .g-count {
+    position: absolute;
+    top: 6px; right: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.55rem;
+    background: var(--surface3);
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  .gallery-card .g-delete {
+    position: absolute;
+    top: 6px; left: 8px;
+    width: 22px; height: 22px;
+    border-radius: 2px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+    z-index: 10;
+    line-height: 1;
+  }
+
+  .gallery-card:hover .g-delete { opacity: 1; }
+  .gallery-card .g-delete:hover {
+    background: rgba(224,80,80,0.15);
+    border-color: rgba(224,80,80,0.4);
+    color: #e05050;
+  }
+
+  .gallery-card.deleting {
+    opacity: 0;
+    transform: scale(0.88) translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+  }
+
+  .clear-all-btn {
+    background: transparent;
+    border: 1px solid rgba(224,80,80,0.3);
+    color: rgba(224,80,80,0.6);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    padding: 5px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    margin-left: auto;
+  }
+
+  .clear-all-btn:hover {
+    border-color: #e05050;
+    color: #e05050;
+    background: rgba(224,80,80,0.08);
+  }
+
+  /* ── LEGENDARY FLASH ── */
+  @keyframes legendaryFlash {
+    0% { opacity: 0; }
+    10% { opacity: 0.6; }
+    30% { opacity: 0; }
+    45% { opacity: 0.4; }
+    60% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+
+  .legendary-flash {
+    position: fixed;
+    inset: 0;
+    background: rgba(240,160,48,0.12);
+    pointer-events: none;
+    z-index: 300;
+    display: none;
+  }
+
+  .legendary-flash.active {
+    display: block;
+    animation: legendaryFlash 1s ease forwards;
+  }
+
+  /* ── SPINNING STATE ── */
+  .spinning-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    min-height: 1.2rem;
+  }
+
+  /* ── CODE SNIPPET PANEL ── */
+  .code-panel {
+    margin: 0 2.5rem 2rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .code-panel summary {
+    background: var(--surface);
+    padding: 0.75rem 1.2rem;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .code-panel summary:hover { color: var(--gold); }
+  .code-panel[open] summary { border-bottom-color: var(--border); color: var(--gold); }
+
+  .code-panel pre {
+    background: #050409;
+    padding: 1.2rem 1.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    line-height: 1.7;
+    color: #9ab0c8;
+    overflow-x: auto;
+  }
+
+  .code-panel .kw { color: #b39ddb; }
+  .code-panel .str { color: #a5d6a7; }
+  .code-panel .num { color: #80cbc4; }
+  .code-panel .cm { color: #4a5568; font-style: italic; }
+  .code-panel .em { color: #f0a030; }
+  .code-panel .key { color: #81b4e8; }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="legendary-flash" class="legendary-flash"></div>
+
+<div id="app">
+  <header>
+    <div class="logo">Vault<span>loot box emporium</span></div>
+    <nav>
+      <button class="nav-btn active" onclick="showView('shop')">Shop</button>
+      <button class="nav-btn" onclick="showView('gallery')" id="gallery-nav-btn">
+        Gallery<span class="gallery-count" id="gallery-count">0</span>
+      </button>
+    </nav>
+  </header>
+
+  <div id="view-shop" class="view active">
+    <div class="shop-hero">
+      <h1>Choose Your Fate</h1>
+      <p>Select a chest and let destiny decide what you deserve</p>
+      <div class="divider"></div>
+    </div>
+    <div class="boxes-grid" id="boxes-grid"></div>
+
+    <div style="padding: 0 2.5rem; max-width: 1200px; margin: 0 auto 0.5rem;">
+      <div style="border-top: 1px solid var(--border); padding-top: 2rem; margin-bottom: 1rem;">
+        <p style="font-family: 'Cinzel', serif; font-size: 0.62rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.4rem;">⬤ Developer</p>
+        <p style="font-size: 0.88rem; color: var(--text-muted); font-style: italic;">Copy the template below to add new loot boxes. Paste it into the <code style="background: var(--surface2); padding: 1px 5px; border-radius: 2px; font-size: 0.78rem; color: var(--gold);">LOOT_BOXES</code> array in the script.</p>
+      </div>
+    </div>
+    <div style="padding: 0 2.5rem 3rem; max-width: 1200px; margin: 0 auto;">
+      <details class="code-panel">
+        <summary>⊞ View add-a-box template & full box schema</summary>
+        <pre id="code-template"></pre>
+      </details>
+    </div>
+  </div>
+
+  <div id="view-gallery" class="view">
+    <div class="gallery-header">
+      <h2>Collection Gallery</h2>
+      <p id="gallery-subtitle">Your acquired treasures, catalogued</p>
+    </div>
+    <div class="gallery-filters" id="gallery-filters">
+      <button class="filter-btn active" onclick="filterGallery('all')">All</button>
+      <button class="filter-btn common" onclick="filterGallery('common')">Common</button>
+      <button class="filter-btn uncommon" onclick="filterGallery('uncommon')">Uncommon</button>
+      <button class="filter-btn rare" onclick="filterGallery('rare')">Rare</button>
+      <button class="filter-btn legendary" onclick="filterGallery('legendary')">Legendary</button>
+      <button class="clear-all-btn" id="clear-all-btn" onclick="clearAllGallery()" style="display:none">✕ Clear All</button>
+    </div>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="opening-modal">
+  <div class="modal-title" id="modal-title"></div>
+  <div class="roulette-wrapper">
+    <div class="spinning-label" id="spin-label">Revealing your fate... (Press Space to skip)</div>
+    <div class="roulette-track-outer">
+      <div class="roulette-pointer"></div>
+      <div class="roulette-track" id="roulette-track"></div>
+    </div>
+  </div>
+  <div class="reveal-container" id="reveal-container">
+    <div class="reveal-item-box" id="reveal-item-box">
+      <span class="reveal-emoji" id="reveal-emoji"></span>
+      <div class="reveal-tier-badge" id="reveal-tier-badge"></div>
+      <div class="reveal-name" id="reveal-name"></div>
+      <div class="reveal-desc" id="reveal-desc"></div>
+    </div>
+  </div>
+  <div class="modal-actions" id="modal-actions">
+    <button class="btn-secondary" onclick="closeModal()">Close</button>
+    <button class="btn-primary" id="open-again-btn">Open Again</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// LOOT BOX DATA 
+// ═══════════════════════════════════════════════════════════════
+
+const LOOT_BOXES = [
+  {
+    id: 'arcane',
+    name: 'Arcane Chest',
+    icon: 'https://api.iconify.design/game-icons:crystal-shrine.svg?color=%236699ff',
+    description: 'Mystical artefacts from the astral plane',
+    color: '#6699ff',
+    glowColor: 'rgba(102,153,255,0.25)',
+    qualityWeight: 1.0,
+    items: [
+      { name: 'Glass Orb',       img: 'https://api.iconify.design/game-icons:crystal-ball.svg?color=%237a8fa0', tier: 'common',    desc: 'A perfectly ordinary orb' },
+      { name: 'Worn Wand',       img: 'https://api.iconify.design/game-icons:magic-wand.svg?color=%237a8fa0', tier: 'common',    desc: 'The magic has mostly faded' },
+      { name: 'Minor Rune',      img: 'https://api.iconify.design/game-icons:rune-stone.svg?color=%237a8fa0', tier: 'common',    desc: 'A faint magical inscription' },
+      { name: 'Mana Shard',      img: 'https://api.iconify.design/game-icons:crystal-growth.svg?color=%234db87a', tier: 'uncommon',  desc: 'Vibrates with arcane energy' },
+      { name: 'Star Map',        img: 'https://api.iconify.design/game-icons:treasure-map.svg?color=%234db87a', tier: 'uncommon',  desc: 'Charts paths between worlds' },
+      { name: 'Enchanted Ring',  img: 'https://api.iconify.design/game-icons:ring.svg?color=%234db87a', tier: 'uncommon',  desc: 'Glows when magic is near' },
+      { name: 'Crystal Staff',   img: 'https://api.iconify.design/game-icons:crystal-wand.svg?color=%236699ff', tier: 'rare',      desc: 'Channels raw arcane power' },
+      { name: 'Void Stone',      img: 'https://api.iconify.design/game-icons:rock.svg?color=%236699ff', tier: 'rare',      desc: 'A fragment of pure darkness' },
+      { name: 'Arcane Tome',     img: 'https://api.iconify.design/game-icons:spell-book.svg?color=%23f0a030', tier: 'legendary', desc: 'Contains all forbidden spells' },
+      { name: 'Celestial Crown', img: 'https://api.iconify.design/game-icons:crown.svg?color=%23f0a030', tier: 'legendary', desc: 'Forged from a dying star' },
+    ]
+  },
+  {
+    id: 'warrior',
+    name: "Warrior's Cache",
+    icon: 'https://api.iconify.design/game-icons:crossed-swords.svg?color=%23e05050',
+    description: 'Arms and armour for the battle-hardened',
+    color: '#e05050',
+    glowColor: 'rgba(224,80,80,0.25)',
+    qualityWeight: 1.3,
+    items: [
+      { name: 'Dull Dagger',     img: 'https://api.iconify.design/game-icons:crossed-daggers.svg?color=%237a8fa0', tier: 'common',    desc: 'Barely holds an edge' },
+      { name: 'Leather Cap',     img: 'https://api.iconify.design/game-icons:leather-helmet.svg?color=%237a8fa0', tier: 'common',    desc: 'Offers minimal protection' },
+      { name: 'Shield Splinter', img: 'https://api.iconify.design/game-icons:broken-shield.svg?color=%237a8fa0', tier: 'common',    desc: 'All that remains of a shield' },
+      { name: "Hunter's Bow",    img: 'https://api.iconify.design/game-icons:bow-arrow.svg?color=%234db87a', tier: 'uncommon',  desc: 'Light and responsive' },
+      { name: 'Iron Gauntlets',  img: 'https://api.iconify.design/game-icons:gauntlet.svg?color=%234db87a', tier: 'uncommon',  desc: 'Heavy but reliable' },
+      { name: 'Battle Axe',      img: 'https://api.iconify.design/game-icons:battle-axe.svg?color=%234db87a', tier: 'uncommon',  desc: 'Well-balanced for combat' },
+      { name: 'Flameblade',      img: 'https://api.iconify.design/game-icons:flaming-sword.svg?color=%236699ff', tier: 'rare',      desc: 'The edge never cools' },
+      { name: 'Dragon Scale',    img: 'https://api.iconify.design/game-icons:dragon-scales.svg?color=%236699ff', tier: 'rare',      desc: 'Impenetrable armour plate' },
+      { name: 'Godsword',        img: 'https://api.iconify.design/game-icons:broadsword.svg?color=%23f0a030', tier: 'legendary', desc: 'Splits mountains with ease' },
+      { name: 'Valhalla Helm',   img: 'https://api.iconify.design/game-icons:winged-helmet.svg?color=%23f0a030', tier: 'legendary', desc: 'Worn by the first king' },
+    ]
+  },
+  {
+    id: 'nature',
+    name: 'Grove Coffer',
+    icon: 'https://api.iconify.design/game-icons:chest.svg?color=%234db87a',
+    description: 'Gifts from the ancient forest spirits',
+    color: '#4db87a',
+    glowColor: 'rgba(77,184,122,0.25)',
+    qualityWeight: 0.8,
+    items: [
+      { name: 'Dried Herb',       img: 'https://api.iconify.design/game-icons:leaf.svg?color=%237a8fa0', tier: 'common',    desc: 'A common roadside plant' },
+      { name: 'River Stone',      img: 'https://api.iconify.design/game-icons:stone-block.svg?color=%237a8fa0', tier: 'common',    desc: 'Smooth from years of water' },
+      { name: 'Acorn',            img: 'https://api.iconify.design/game-icons:acorn.svg?color=%237a8fa0', tier: 'common',    desc: 'Potential is hidden within' },
+      { name: 'Moonflower',       img: 'https://api.iconify.design/game-icons:flower-star.svg?color=%234db87a', tier: 'uncommon',  desc: 'Blooms only at midnight' },
+      { name: 'Amber Resin',      img: 'https://api.iconify.design/game-icons:amber-mosquito.svg?color=%234db87a', tier: 'uncommon',  desc: 'A trapped moment in time' },
+      { name: 'Spirit Feather',   img: 'https://api.iconify.design/game-icons:feather.svg?color=%234db87a', tier: 'uncommon',  desc: 'Left by a phoenix' },
+      { name: 'Elder Bark',       img: 'https://api.iconify.design/game-icons:oak-leaf.svg?color=%236699ff', tier: 'rare',      desc: 'Ancient as the world itself' },
+      { name: 'Sunstone Seed',    img: 'https://api.iconify.design/game-icons:sun.svg?color=%236699ff', tier: 'rare',      desc: 'Grows into light itself' },
+      { name: 'World Tree Leaf',  img: 'https://api.iconify.design/game-icons:trefoil-leaf.svg?color=%23f0a030', tier: 'legendary', desc: 'From the root of all life' },
+      { name: 'Gaia\'s Tear',     img: 'https://api.iconify.design/game-icons:water-drop.svg?color=%23f0a030', tier: 'legendary', desc: 'The earth wept only once' },
+    ]
+  },
+  {
+  id: 'testbox',                         // unique ID (no spaces/special chars)
+  name: 'Testerbox',                   // displayed on the card
+  icon: 'https://cdn-icons-png.flaticon.com/128/16054/16054445.png',     // SVG/Image URL shown large
+  description: 'Contains great stuff',    // italic subtitle on card
+  color: '#F527CF',                    // hex accent colour
+  glowColor: 'rgba(255,107,107,0.25)',   // same colour, transparent
+
+  qualityWeight: 1.5,
+
+  items: [
+    // tier: 'common' | 'uncommon' | 'rare' | 'legendary'
+    { name: 'Early Morning Surprise',   img: 'assets/earlmorn.jpg', tier: 'common',    desc: 'Just a simple one.' },
+    { name: 'Beach Day Prep',   img: 'assets/beachday.jpg', tier: 'common',    desc: 'Fine day for a fine set.' },
+    { name: 'Struggle to Change',   img: 'assets/changstruggle.jpg', tier: 'common',    desc: 'Frustrating.' },
+    { name: 'Deep in the Night',  img: 'assets/darknight.jpg', tier: 'uncommon',  desc: 'Beckoning...'   },
+    { name: 'A Windy Day',    img: 'assets/windyday.jpg', tier: 'rare',      desc: 'Oh dear!' },
+    { name: 'A Lucky Day',    img: 'assets/windyday2.jpg', tier: 'rare',      desc: 'Sometimes works for the best' },
+    { name: 'Unlucky Catch',    img: 'assets/unlucky.jpg', tier: 'legendary', desc: 'Not the best of luck' },
+    { name: 'Promotion Needed',    img: 'assets/officeday.jpg', tier: 'legendary', desc: 'You need a promotion!' }
+  ]
+},
+{
+  id: 'clothbox',                         // unique ID (no spaces/special chars)
+  name: 'Clothbox',                   // displayed on the card
+  icon: 'https://cdn-icons-png.flaticon.com/128/16054/16054445.png',     // SVG/Image URL shown large
+  description: 'Only the finest silk',    // italic subtitle on card
+  color: '#F527CF',                    // hex accent colour
+  glowColor: 'rgba(255,107,107,0.25)',   // same colour, transparent
+
+  qualityWeight: 1.3,
+
+  items: [
+    // tier: 'common' | 'uncommon' | 'rare' | 'legendary'
+    { name: 'Black',   img: 'assets/black.jpg', tier: 'common',    desc: '' },
+    { name: 'Red',   img: 'assets/red.jpg', tier: 'common',    desc: '' },
+    { name: 'White',   img: 'assets/white.jpg', tier: 'common',    desc: '' },
+    { name: 'Yellow',  img: 'assets/yellow.jpg', tier: 'uncommon',  desc: ''   },
+    { name: 'Purple',    img: 'assets/purple.jpg', tier: 'rare',      desc: '' },
+    { name: 'Blue',    img: 'assets/blue.jpg', tier: 'rare',      desc: '' },
+    { name: 'Gold and Silver',    img: 'assets/silvergold.jpg', tier: 'legendary', desc: '' },
+    { name: 'Pink and Blue',    img: 'assets/pinkblue.jpg', tier: 'legendary', desc: '' },
+    { name: 'Grey and Cream',    img: 'assets/greycream.jpg', tier: 'legendary', desc: '' }
+  ]
+},
+{
+  id: 'realbox',                         // unique ID (no spaces/special chars)
+  name: 'Realbox',                   // displayed on the card
+  icon: 'https://cdn-icons-png.flaticon.com/128/16054/16054445.png',     // SVG/Image URL shown large
+  description: 'The most realistic',    // italic subtitle on card
+  color: '#F527CF',                    // hex accent colour
+  glowColor: 'rgba(255,107,107,0.25)',   // same colour, transparent
+
+  qualityWeight: 0.9,
+
+  items: [
+    // tier: 'common' | 'uncommon' | 'rare' | 'legendary'
+    { name: 'Bus Ride',   img: 'assets/busride.jpg', tier: 'common',    desc: 'Long Journey Ahead!' },
+    { name: 'Street Jog',   img: 'assets/streetrun.jpg', tier: 'common',    desc: 'Just a quick jog!' },
+    { name: 'Take a Seat',   img: 'assets/sofaseat.jpg', tier: 'common',    desc: 'Plenty of room.' },
+    { name: 'The Pale',  img: 'assets/thepale.jpg', tier: 'uncommon',  desc: 'Almost invisible!'   },
+    { name: 'Tease',  img: 'assets/tease.jpg', tier: 'uncommon',  desc: 'Close to the gold.'   },
+    { name: 'Table',  img: 'assets/table.jpg', tier: 'uncommon',  desc: 'What a view!'   },
+    { name: 'Office Promo',    img: 'assets/officepromo.jpg', tier: 'rare',      desc: 'Promotion coming!' },
+    { name: 'Detention',    img: 'assets/classtime.jpg', tier: 'rare',      desc: 'Classtime is dismissed' },
+    { name: 'Interrogation',    img: 'assets/interrogation.jpg', tier: 'rare',      desc: 'Some methods work better than others.' },
+    { name: 'First time',    img: 'assets/firsttime.jpg', tier: 'legendary', desc: 'Go easy!' },
+    { name: 'Interrogation Gone Wrong',    img: 'assets/interrogationwrong.jpg', tier: 'legendary', desc: 'Shouldve listened.' },
+    { name: 'Great Customer Service',    img: 'assets/pubfun.jpg', tier: 'legendary', desc: '10/10 Would recommend!' }
+  ]
+},
+];
+
+// ═══════════════════════════════════════════════════════════════
+// TIER CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+const TIERS = {
+  common:    { weight: 60, color: '#7a8fa0', label: 'Common' },
+  uncommon:  { weight: 28, color: '#4db87a', label: 'Uncommon' },
+  rare:      { weight: 10, color: '#6699ff', label: 'Rare' },
+  legendary: { weight: 2,  color: '#f0a030', label: 'Legendary' }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let gallery = JSON.parse(localStorage.getItem('vault_gallery') || '[]');
+let currentBox = null;
+let isSpinning = false;
+let galleryFilter = 'all';
+
+// Spacebar skip state trackers
+let spinTimeoutId = null;
+let currentTrackElement = null;
+let currentWinnerData = null;
+let currentTargetOffset = 0;
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+function init() {
+  renderBoxes();
+  renderGallery();
+  updateGalleryCount();
+  renderCodeTemplate();
+  setupKeyboardControls();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD EVENT LISTENER
+// ═══════════════════════════════════════════════════════════════
+function setupKeyboardControls() {
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      const modal = document.getElementById('opening-modal');
+      if (modal.classList.contains('open')) {
+        e.preventDefault(); 
+        if (isSpinning) {
+          skipSpin();
+        } else if (document.getElementById('reveal-container').classList.contains('show')) {
+          document.getElementById('open-again-btn').click();
+        }
+      }
+    }
+  });
+}
+
+function skipSpin() {
+  if (!isSpinning || !currentTrackElement || !currentWinnerData) return;
+  
+  clearTimeout(spinTimeoutId);
+  isSpinning = false;
+  
+  // Instantly snap to the end location
+  currentTrackElement.style.transition = 'none';
+  currentTrackElement.style.transform = `translateX(-${currentTargetOffset}px)`;
+  
+  showReveal(currentWinnerData);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER BOXES
+// ═══════════════════════════════════════════════════════════════
+function renderBoxes() {
+  const grid = document.getElementById('boxes-grid');
+  grid.innerHTML = LOOT_BOXES.map(box => {
+    const rates = computeRates(box.qualityWeight);
+    return `
+      <div class="box-card" style="--box-glow: ${box.glowColor}" onclick="openBox('${box.id}')">
+        <span class="box-icon"><img src="${box.icon}" alt="${box.name} icon"></span>
+        <div class="box-name">${box.name}</div>
+        <div class="box-desc">${box.description}</div>
+        <div class="box-weight-label">
+          <span>Quality Weight</span>
+          <span style="color: ${box.qualityWeight >= 1.5 ? '#4db87a' : box.qualityWeight <= 0.7 ? '#e05050' : '#c9a84c'}">${box.qualityWeight.toFixed(1)}×</span>
+        </div>
+        <div class="box-weight-bar">
+          <div class="box-weight-fill" style="width: ${Math.min(100, (box.qualityWeight / 3) * 100)}%"></div>
+        </div>
+        <div class="tier-pills">
+          <span class="tier-pill common">C ${rates.common}%</span>
+          <span class="tier-pill uncommon">U ${rates.uncommon}%</span>
+          <span class="tier-pill rare">R ${rates.rare}%</span>
+          <span class="tier-pill legendary">L ${rates.legendary}%</span>
+        </div>
+        <button class="open-btn">Open Chest</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function computeRates(qw) {
+  const w = {
+    common:    TIERS.common.weight / Math.pow(qw, 0.8),
+    uncommon:  TIERS.uncommon.weight * Math.pow(qw, 0.5),
+    rare:      TIERS.rare.weight * Math.pow(qw, 1.2),
+    legendary: TIERS.legendary.weight * Math.pow(qw, 1.8)
+  };
+  const total = w.common + w.uncommon + w.rare + w.legendary;
+  return {
+    common:    Math.round((w.common / total) * 100),
+    uncommon:  Math.round((w.uncommon / total) * 100),
+    rare:      Math.round((w.rare / total) * 100),
+    legendary: Math.max(1, Math.round((w.legendary / total) * 100))
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOX OPENING
+// ═══════════════════════════════════════════════════════════════
+function openBox(id) {
+  if (isSpinning) return;
+  currentBox = LOOT_BOXES.find(b => b.id === id);
+  if (!currentBox) return;
+
+  document.getElementById('modal-title').innerHTML = `Opening <img src="${currentBox.icon}" alt="Icon"> ${currentBox.name}`;
+  document.getElementById('reveal-container').classList.remove('show');
+  document.getElementById('spin-label').textContent = 'Spinning... (Press Space to skip)';
+
+  const modal = document.getElementById('opening-modal');
+  modal.classList.add('open');
+
+  const track = document.getElementById('roulette-track');
+  const winnerId = rollItem(currentBox);
+  const winner = currentBox.items.find(i => i.name === winnerId.name);
+
+  buildRouletteTrack(track, currentBox.items, winner);
+  startSpin(track, winner);
+}
+
+function rollItem(box) {
+  const qw = box.qualityWeight;
+  const tierWeights = {
+    common:    TIERS.common.weight / Math.pow(qw, 0.8),
+    uncommon:  TIERS.uncommon.weight * Math.pow(qw, 0.5),
+    rare:      TIERS.rare.weight * Math.pow(qw, 1.2),
+    legendary: TIERS.legendary.weight * Math.pow(qw, 1.8)
+  };
+  const total = Object.values(tierWeights).reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  let chosenTier = 'common';
+  for (const [tier, w] of Object.entries(tierWeights)) {
+    r -= w;
+    if (r <= 0) { chosenTier = tier; break; }
+  }
+  const tierItems = box.items.filter(i => i.tier === chosenTier);
+  return tierItems[Math.floor(Math.random() * tierItems.length)];
+}
+
+function buildRouletteTrack(track, allItems, winner) {
+  const ITEM_W = 106; // item width + gap
+  const VISIBLE_COUNT = 50;
+  const WINNER_POS = 40;
+
+  track.style.transition = 'none';
+  track.style.transform = 'translateX(0)';
+
+  const cells = [];
+  for (let i = 0; i < VISIBLE_COUNT; i++) {
+    if (i === WINNER_POS) {
+      cells.push(winner);
+    } else {
+      const pool = allItems.filter(it => i < WINNER_POS ? true : it.tier !== 'legendary');
+      cells.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+  }
+
+  track.innerHTML = cells.map(item => `
+    <div class="roulette-item ${item.tier}">
+      <span class="item-emoji"><img src="${item.img}" alt="${item.name}"></span>
+      <span class="item-name">${item.name}</span>
+    </div>
+  `).join('');
+
+  track._winnerPos = WINNER_POS;
+  track._itemW = ITEM_W;
+  track._winner = winner;
+}
+
+function startSpin(track, winner) {
+  isSpinning = true;
+  currentTrackElement = track;
+  currentWinnerData = winner;
+
+  const ITEM_W = 106;
+  const WINNER_POS = 40;
+  const containerW = track.parentElement.offsetWidth;
+  const centerX = containerW / 2;
+  const targetOffset = WINNER_POS * ITEM_W - centerX + ITEM_W / 2 + (Math.random() * 60 - 30);
+  
+  currentTargetOffset = targetOffset;
+
+  const startOffset = -containerW;
+  track.style.transition = 'none';
+  track.style.transform = `translateX(${startOffset}px)`;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const duration = 3800 + Math.random() * 800;
+      track.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.8, 0.2, 1)`;
+      track.style.transform = `translateX(-${targetOffset}px)`;
+
+      spinTimeoutId = setTimeout(() => {
+        if(isSpinning) { 
+          isSpinning = false;
+          showReveal(winner);
+        }
+      }, duration + 100);
+    });
+  });
+}
+
+function showReveal(item) {
+  const tierColors = {
+    common:    { color: '#7a8fa0', glow: 'rgba(122,143,160,0.08)' },
+    uncommon:  { color: '#4db87a', glow: 'rgba(77,184,122,0.1)' },
+    rare:      { color: '#6699ff', glow: 'rgba(102,153,255,0.12)' },
+    legendary: { color: '#f0a030', glow: 'rgba(240,160,48,0.15)' }
+  };
+
+  const tc = tierColors[item.tier];
+  document.getElementById('spin-label').textContent = 'Press Space to open again';
+
+  const box = document.getElementById('reveal-item-box');
+  box.style.borderColor = tc.color;
+  box.style.setProperty('--reveal-glow', tc.glow);
+  document.getElementById('reveal-emoji').innerHTML = `<img src="${item.img}" alt="${item.name}">`;
+  document.getElementById('reveal-tier-badge').textContent = TIERS[item.tier].label;
+  document.getElementById('reveal-tier-badge').style.color = tc.color;
+  document.getElementById('reveal-tier-badge').style.borderColor = tc.color;
+  document.getElementById('reveal-tier-badge').style.background = tc.glow;
+  document.getElementById('reveal-name').textContent = item.name;
+  document.getElementById('reveal-name').style.color = tc.color;
+  document.getElementById('reveal-desc').textContent = item.desc;
+
+  document.getElementById('reveal-container').classList.add('show');
+
+  if (item.tier === 'legendary') {
+    const flash = document.getElementById('legendary-flash');
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 1100);
+  }
+
+  addToGallery(item, currentBox);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GALLERY
+// ═══════════════════════════════════════════════════════════════
+function addToGallery(item, box) {
+  const existing = gallery.find(g => g.name === item.name && g.boxId === box.id);
+  if (existing) {
+    existing.count = (existing.count || 1) + 1;
+  } else {
+    gallery.push({
+      name: item.name,
+      img: item.img,
+      tier: item.tier,
+      desc: item.desc,
+      boxId: box.id,
+      boxName: box.name,
+      boxIcon: box.icon,
+      count: 1,
+      acquiredAt: Date.now()
+    });
+  }
+  localStorage.setItem('vault_gallery', JSON.stringify(gallery));
+  updateGalleryCount();
+  renderGallery();
+}
+
+function updateGalleryCount() {
+  const total = gallery.reduce((sum, g) => sum + (g.count || 1), 0);
+  document.getElementById('gallery-count').textContent = total;
+}
+
+function filterGallery(tier) {
+  galleryFilter = tier;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.remove('active');
+  });
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    if ((b.onclick + '').includes(`'${tier}'`)) b.classList.add('active');
+  });
+  renderGallery();
+}
+
+function renderGallery() {
+  const grid = document.getElementById('gallery-grid');
+  let items = galleryFilter === 'all' ? gallery : gallery.filter(g => g.tier === galleryFilter);
+  items = items.slice().sort((a, b) => {
+    const order = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+    return order[a.tier] - order[b.tier];
+  });
+
+  const total = gallery.reduce((s, g) => s + (g.count || 1), 0);
+  document.getElementById('gallery-subtitle').textContent =
+    total === 0 ? 'Your acquired treasures, catalogued' : `${total} item${total !== 1 ? 's' : ''} collected across ${new Set(gallery.map(g => g.boxId)).size} box${new Set(gallery.map(g => g.boxId)).size !== 1 ? 'es' : ''}`;
+
+  const clearBtn = document.getElementById('clear-all-btn');
+  clearBtn.style.display = gallery.length > 0 ? 'block' : 'none';
+
+  if (items.length === 0) {
+    grid.innerHTML = `<div class="gallery-empty">${gallery.length === 0 ? 'No items collected yet. Open some chests to begin.' : 'No items match this filter.'}</div>`;
+    return;
+  }
+
+  const tierColors = { common: '#7a8fa0', uncommon: '#4db87a', rare: '#6699ff', legendary: '#f0a030' };
+
+  grid.innerHTML = items.map((item, idx) => {
+    const galleryIdx = gallery.indexOf(item);
+    return `
+    <div class="gallery-card ${item.tier}" style="--card-tier-color: ${tierColors[item.tier]}" id="gcard-${galleryIdx}">
+      <button class="g-delete" onclick="deleteGalleryItem(${galleryIdx}, event)" title="Remove one">✕</button>
+      ${item.count > 1 ? `<span class="g-count">×${item.count}</span>` : ''}
+      <span class="g-emoji"><img src="${item.img}" alt="${item.name}"></span>
+      <div class="g-name">${item.name}</div>
+      <div class="g-tier ${item.tier}">${TIERS[item.tier].label}</div>
+      <div class="g-source"><img src="${item.boxIcon}" alt="Box icon"> ${item.boxName}</div>
+    </div>
+  `}).join('');
+}
+
+function deleteGalleryItem(idx, e) {
+  e.stopPropagation();
+  const item = gallery[idx];
+  if (!item) return;
+
+  const card = document.getElementById(`gcard-${idx}`);
+
+  if (item.count > 1) {
+    item.count--;
+    localStorage.setItem('vault_gallery', JSON.stringify(gallery));
+    updateGalleryCount();
+    renderGallery();
+  } else {
+    if (card) card.classList.add('deleting');
+    setTimeout(() => {
+      gallery.splice(idx, 1);
+      localStorage.setItem('vault_gallery', JSON.stringify(gallery));
+      updateGalleryCount();
+      renderGallery();
+    }, 200);
+  }
+}
+
+function clearAllGallery() {
+  if (!confirm('Remove all items from your gallery? This cannot be undone.')) return;
+  gallery = [];
+  localStorage.setItem('vault_gallery', JSON.stringify(gallery));
+  updateGalleryCount();
+  renderGallery();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL CONTROLS
+// ═══════════════════════════════════════════════════════════════
+function closeModal() {
+  if (isSpinning) return;
+  document.getElementById('opening-modal').classList.remove('open');
+  document.getElementById('reveal-container').classList.remove('show');
+  document.getElementById('spin-label').textContent = 'Revealing your fate...';
+  currentBox = null;
+}
+
+document.getElementById('open-again-btn').addEventListener('click', () => {
+  if (isSpinning || !currentBox) return;
+  const boxId = currentBox.id;
+  document.getElementById('reveal-container').classList.remove('show');
+  document.getElementById('spin-label').textContent = 'Spinning... (Press Space to skip)';
+  const box = LOOT_BOXES.find(b => b.id === boxId);
+  const track = document.getElementById('roulette-track');
+  const winner = rollItem(box);
+  buildRouletteTrack(track, box.items, winner);
+  setTimeout(() => startSpin(track, winner), 100);
+});
+
+document.getElementById('opening-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// VIEW NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${id}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.nav-btn[onclick*="${id}"]`).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CODE TEMPLATE
+// ═══════════════════════════════════════════════════════════════
+function renderCodeTemplate() {
+  const el = document.getElementById('code-template');
+  el.innerHTML = `<span class="cm">// ── ADD THIS OBJECT TO THE LOOT_BOXES ARRAY ────────────────────</span>
+{
+  <span class="key">id</span>: <span class="str">'mybox'</span>,                         <span class="cm">// unique ID (no spaces/special chars)</span>
+  <span class="key">name</span>: <span class="str">'My New Box'</span>,                   <span class="cm">// displayed on the card</span>
+  <span class="key">icon</span>: <span class="str">'https://link-to-icon.svg'</span>,     <span class="cm">// SVG/Image URL shown large</span>
+  <span class="key">description</span>: <span class="str">'Contains great stuff'</span>,    <span class="cm">// italic subtitle on card</span>
+  <span class="key">color</span>: <span class="str">'#ff6b6b'</span>,                    <span class="cm">// hex accent colour</span>
+  <span class="key">glowColor</span>: <span class="str">'rgba(255,107,107,0.25)'</span>,   <span class="cm">// same colour, transparent</span>
+
+  <span class="key">qualityWeight</span>: <span class="num">1.0</span>,
+
+  <span class="key">items</span>: [
+    <span class="cm">// tier: 'common' | 'uncommon' | 'rare' | 'legendary'</span>
+    { <span class="key">name</span>: <span class="str">'Basic Item'</span>,   <span class="key">img</span>: <span class="str">'https://link-to-icon.svg'</span>, <span class="key">tier</span>: <span class="str">'common'</span>,    <span class="key">desc</span>: <span class="str">'Nothing special'</span> },
+    { <span class="key">name</span>: <span class="str">'Medium Item'</span>,  <span class="key">img</span>: <span class="str">'https://link-to-icon.svg'</span>, <span class="key">tier</span>: <span class="str">'uncommon'</span>,  <span class="key">desc</span>: <span class="str">'Pretty decent'</span>   },
+    { <span class="key">name</span>: <span class="str">'Good Item'</span>,    <span class="key">img</span>: <span class="str">'https://link-to-icon.svg'</span>, <span class="key">tier</span>: <span class="str">'rare'</span>,      <span class="key">desc</span>: <span class="str">'Quite impressive'</span> },
+    { <span class="key">name</span>: <span class="str">'Epic Item'</span>,    <span class="key">img</span>: <span class="str">'https://link-to-icon.svg'</span>, <span class="key">tier</span>: <span class="str">'legendary'</span>, <span class="key">desc</span>: <span class="str">'Extraordinarily rare'</span> },
+  ]
+}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RUN
+// ═══════════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
